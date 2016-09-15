@@ -87,6 +87,11 @@ static int lowmem_minfree[6] = {
 static int lowmem_minfree_size = 4;
 static int lmk_fast_run = 1;
 
+/*
+ * This parameter tracks the kill count per minfree since boot.
+ */
+static int lowmem_per_minfree_count[6];
+
 static unsigned long lowmem_deathpending_timeout;
 
 #define lowmem_print(level, x...)			\
@@ -477,21 +482,12 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	int selected_tasksize = 0;
 	short selected_oom_score_adj;
 	int array_size = ARRAY_SIZE(lowmem_adj);
-	int other_free;
-	int other_file;
-	bool lock_required = true;
-
-	other_free = global_zone_page_state(NR_FREE_PAGES) - totalreserve_pages;
-
-	if (global_node_page_state(NR_SHMEM) + total_swapcache_pages() +
-			global_node_page_state(NR_UNEVICTABLE) <
-			global_node_page_state(NR_FILE_PAGES))
-		other_file = global_node_page_state(NR_FILE_PAGES) -
-					global_node_page_state(NR_SHMEM) -
-					global_node_page_state(NR_UNEVICTABLE) -
-					total_swapcache_pages();
-	else
-		other_file = 0;
+	int other_free = global_page_state(NR_FREE_PAGES) - totalreserve_pages;
+	int other_file = global_node_page_state(NR_FILE_PAGES) -
+				global_node_page_state(NR_SHMEM) -
+				global_node_page_state(NR_UNEVICTABLE) -
+				total_swapcache_pages();
+	int minfree_count_offset = 0;
 
 	if (!get_nr_swap_pages() && (other_free <= lowmem_minfree[0] >> 1) &&
 	    (other_file <= lowmem_minfree[0] >> 1))
@@ -511,6 +507,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		minfree = mult_frac(lowmem_minfree[i], scale_percent, 100);
 		if (other_free < minfree && other_file < minfree) {
 			min_score_adj = lowmem_adj[i];
+			minfree_count_offset = i;
 			break;
 		}
 	}
@@ -628,6 +625,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		}
 		task_unlock(selected);
 		trace_lowmemory_kill(selected, cache_size, cache_limit, free);
+		lowmem_per_minfree_count[minfree_count_offset]++;
 		lowmem_print(1, "Killing '%s' (%d) (tgid %d), adj %hd,\n"
 			"to free %ldkB on behalf of '%s' (%d) because\n"
 			"cache %ldkB is below limit %ldkB for oom score %hd\n"
@@ -815,7 +813,8 @@ __MODULE_PARM_TYPE(adj, "array of short");
 module_param_array_named(adj, lowmem_adj, short, &lowmem_adj_size, 0644);
 #endif
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
-			 S_IRUGO | S_IWUSR);
-module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
-module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
+			 0644);
+module_param_array_named(lmk_count, lowmem_per_minfree_count, uint, NULL,
+			 S_IRUGO);
+module_param_named(debug_level, lowmem_debug_level, uint, 0644);
 
