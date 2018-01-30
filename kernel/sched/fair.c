@@ -6643,7 +6643,7 @@ static int wake_wide(struct task_struct *p, int sibling_count_hint)
  *			  for the overloaded case.
  */
 
-static int
+static bool
 wake_affine_idle(int this_cpu, int prev_cpu, int sync)
 {
 	/*
@@ -6708,7 +6708,7 @@ static int wake_affine(struct sched_domain *sd, struct task_struct *p,
 	int target = nr_cpumask_bits;
 
 	if (sched_feat(WA_IDLE))
-		target = wake_affine_idle(this_cpu, prev_cpu, sync);
+		affine = wake_affine_idle(this_cpu, prev_cpu, sync);
 
 	if (sched_feat(WA_WEIGHT) && target == nr_cpumask_bits)
 		target = wake_affine_weight(sd, p, this_cpu, prev_cpu, sync);
