@@ -973,7 +973,7 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	struct zswap_entry *entry;
 	struct crypto_comp *tfm;
 	int ret;
-	unsigned int hlen, dlen = PAGE_SIZE;
+	unsigned int dlen = PAGE_SIZE, len;
 	unsigned long handle, value;
 	char *buf;
 	u8 *src, *dst;
