@@ -11,8 +11,8 @@ struct inode;
 struct mm_struct;
 struct task_struct;
 
-long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
-	      u32 __user *uaddr2, u32 val2, u32 val3);
+extern int
+handle_futex_death(u32 __user *uaddr, struct task_struct *curr, int pi);
 
 /*
  * Futexes are matched on equal values of this key.
@@ -53,17 +53,26 @@ union futex_key {
 #define FUTEX_KEY_INIT (union futex_key) { .both = { .ptr = NULL } }
 
 #ifdef CONFIG_FUTEX
-enum {
-	FUTEX_STATE_OK,
-	FUTEX_STATE_EXITING,
-	FUTEX_STATE_DEAD,
-};
+extern void exit_robust_list(struct task_struct *curr);
 
-static inline void futex_init_task(struct task_struct *tsk)
+long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
+	      u32 __user *uaddr2, u32 val2, u32 val3);
+#ifdef CONFIG_HAVE_FUTEX_CMPXCHG
+#define futex_cmpxchg_enabled 1
+#else
+extern int futex_cmpxchg_enabled;
+#endif
+#else
+static inline void exit_robust_list(struct task_struct *curr)
 {
-	tsk->robust_list = NULL;
-#ifdef CONFIG_COMPAT
-	tsk->compat_robust_list = NULL;
+}
+
+static inline long do_futex(u32 __user *uaddr, int op, u32 val,
+			    ktime_t *timeout, u32 __user *uaddr2,
+			    u32 val2, u32 val3)
+{
+	return -EINVAL;
+}
 #endif
 	INIT_LIST_HEAD(&tsk->pi_state_list);
 	tsk->pi_state_cache = NULL;
