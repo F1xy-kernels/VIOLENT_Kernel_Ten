@@ -510,24 +510,14 @@ locked:
 	 */
 
 	/*
-	 * In the PV case we might already have _Q_LOCKED_VAL set, because
-	 * of lock stealing; therefore we must also allow:
+	 * In the PV case we might already have _Q_LOCKED_VAL set.
 	 *
-	 * n,0,1 -> 0,0,1
-	 *
-	 * Note: at this point: (val & _Q_PENDING_MASK) == 0, because of the
-	 *       above wait condition, therefore any concurrent setting of
-	 *       PENDING will make the uncontended transition fail.
+	 * The atomic_cond_read_acquire() call above has provided the
+	 * necessary acquire semantics required for locking.
 	 */
-	if ((val & _Q_TAIL_MASK) == tail) {
-		/*
-		 * The atomic_cond_read_acquire() call above has provided the
-		 * necessary acquire semantics required for locking.
-		 */
-		old = atomic_cmpxchg_relaxed(&lock->val, val, _Q_LOCKED_VAL);
-		if (old == val)
-			goto release; /* No contention */
-	}
+	if (((val & _Q_TAIL_MASK) == tail) &&
+	    atomic_try_cmpxchg_relaxed(&lock->val, &val, _Q_LOCKED_VAL))
+		goto release; /* No contention */
 
 	/*
 	 * Either somebody is queued behind us or _Q_PENDING_VAL got set
