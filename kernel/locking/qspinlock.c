@@ -357,8 +357,8 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
 		 * barriers.
 		 */
 		if (val & _Q_LOCKED_MASK) {
-			smp_cond_load_acquire(&lock->val.counter,
-					      !(VAL & _Q_LOCKED_MASK));
+			atomic_cond_read_acquire(&lock->val,
+						 !(VAL & _Q_LOCKED_MASK));
 		}
 
 		/*
@@ -520,7 +520,12 @@ locked:
 	 *       PENDING will make the uncontended transition fail.
 	 */
 	if ((val & _Q_TAIL_MASK) == tail) {
-		if (atomic_try_cmpxchg_relaxed(&lock->val, &val, _Q_LOCKED_VAL))
+		/*
+		 * The atomic_cond_read_acquire() call above has provided the
+		 * necessary acquire semantics required for locking.
+		 */
+		old = atomic_cmpxchg_relaxed(&lock->val, val, _Q_LOCKED_VAL);
+		if (old == val)
 			goto release; /* No contention */
 	}
 
