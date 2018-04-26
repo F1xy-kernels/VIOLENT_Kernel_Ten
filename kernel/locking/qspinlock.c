@@ -367,6 +367,7 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
 		 * *,1,0 -> *,0,1
 		 */
 		clear_pending_set_locked(lock);
+		qstat_inc(qstat_lock_pending, true);
 		return;
 	}
 
@@ -384,7 +385,7 @@ void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val)
 queue:
 	qstat_inc(qstat_lock_slowpath, true);
 pv_queue:
-	node = this_cpu_ptr(&qnodes[0].mcs);
+	node = this_cpu_ptr(&mcs_nodes[0]);
 	idx = node->count++;
 	tail = encode_tail(smp_processor_id(), idx);
 
