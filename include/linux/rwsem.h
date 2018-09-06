@@ -55,10 +55,20 @@ struct rw_semaphore {
 };
 
 /*
- * Setting all bits of the owner field except bit 0 will indicate
+ * Setting bit 1 of the owner field but not bit 0 will indicate
  * that the rwsem is writer-owned with an unknown owner.
  */
-#define RWSEM_OWNER_UNKNOWN	(-2L)
+#define RWSEM_OWNER_UNKNOWN	((struct task_struct *)-2L)
+
+extern struct rw_semaphore *rwsem_down_read_failed(struct rw_semaphore *sem);
+extern struct rw_semaphore *rwsem_down_read_failed_killable(struct rw_semaphore *sem);
+extern struct rw_semaphore *rwsem_down_write_failed(struct rw_semaphore *sem);
+extern struct rw_semaphore *rwsem_down_write_failed_killable(struct rw_semaphore *sem);
+extern struct rw_semaphore *rwsem_wake(struct rw_semaphore *);
+extern struct rw_semaphore *rwsem_downgrade_wake(struct rw_semaphore *sem);
+
+/* Include the arch specific part */
+#include <asm/rwsem.h>
 
 /* In all implementations count != 0 means locked */
 static inline int rwsem_is_locked(struct rw_semaphore *sem)
