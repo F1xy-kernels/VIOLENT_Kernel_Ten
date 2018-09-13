@@ -123,9 +123,9 @@ static __always_inline unsigned long __cmpxchg##sfx(volatile void *ptr,	\
 {									\
 	switch (size) {							\
 	case 1:								\
-		return __cmpxchg_case##sfx##_8(ptr, old, new);		\
+		return __cmpxchg_case##sfx##_8(ptr, (u8)old, new);	\
 	case 2:								\
-		return __cmpxchg_case##sfx##_16(ptr, old, new);		\
+		return __cmpxchg_case##sfx##_16(ptr, (u16)old, new);	\
 	case 4:								\
 		return __cmpxchg_case##sfx##_32(ptr, old, new);		\
 	case 8:								\
@@ -197,9 +197,9 @@ __CMPXCHG_GEN(_mb)
 	__ret; \
 })
 
-#define __CMPWAIT_CASE(w, sz, name)					\
-static inline void __cmpwait_case_##name(volatile void *ptr,		\
-					 unsigned long val)		\
+#define __CMPWAIT_CASE(w, sfx, sz)					\
+static inline void __cmpwait_case_##sz(volatile void *ptr,		\
+				       unsigned long val)		\
 {									\
 	unsigned long tmp;						\
 									\
