@@ -97,7 +97,7 @@ static inline void sha_pad_init(struct sha_pad *shapad)
  */
 struct ppp_mppe_state {
 	struct crypto_sync_skcipher *arc4;
-	struct shash_desc *sha1;
+	struct crypto_ahash *sha1;
 	unsigned char *sha1_digest;
 	unsigned char master_key[MPPE_MAX_KEY_LEN];
 	unsigned char session_key[MPPE_MAX_KEY_LEN];
@@ -248,10 +248,7 @@ static void *mppe_alloc(unsigned char *options, int optlen)
 
 out_free:
 	kfree(state->sha1_digest);
-	if (state->sha1) {
-		crypto_free_shash(state->sha1->tfm);
-		kzfree(state->sha1);
-	}
+	crypto_free_ahash(state->sha1);
 	crypto_free_sync_skcipher(state->arc4);
 	kfree(state);
 out:
@@ -266,8 +263,7 @@ static void mppe_free(void *arg)
 	struct ppp_mppe_state *state = (struct ppp_mppe_state *) arg;
 	if (state) {
 		kfree(state->sha1_digest);
-		crypto_free_shash(state->sha1->tfm);
-		kzfree(state->sha1);
+		crypto_free_ahash(state->sha1);
 		crypto_free_sync_skcipher(state->arc4);
 		kfree(state);
 	}
