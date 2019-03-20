@@ -90,7 +90,8 @@ static struct elevator_type *elevator_find(const char *name, bool mq)
 {
 	struct elevator_type *e;
 
-	if (!strcmp(current->comm, "init"))
+	/* Forbid init from changing I/O scheduler from default */
+	if (!strncmp(current->comm, "init", sizeof("init")))
 		return NULL;
 
 	list_for_each_entry(e, &elv_list, list) {
