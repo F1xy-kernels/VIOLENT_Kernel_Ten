@@ -20,18 +20,9 @@
 #include <linux/osq_lock.h>
 #endif
 
-/*
- * For an uncontended rwsem, count and owner are the only fields a task
- * needs to touch when acquiring the rwsem. So they are put next to each
- * other to increase the chance that they will share the same cacheline.
- *
- * In a contended rwsem, the owner is likely the most frequently accessed
- * field in the structure as the optimistic waiter that holds the osq lock
- * will spin on owner. For an embedded rwsem, other hot fields in the
- * containing structure should be moved further away from the rwsem to
- * reduce the chance that they will share the same cacheline causing
- * cacheline bouncing problem.
- */
+struct rw_semaphore;
+
+/* All arch specific implementations share the same struct */
 struct rw_semaphore {
 	atomic_long_t count;
 #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
