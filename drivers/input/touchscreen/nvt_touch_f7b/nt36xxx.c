@@ -28,6 +28,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/workqueue.h>
+#include <linux/pm_qos.h>
 
 #if defined(CONFIG_FB)
 #include <linux/notifier.h>
@@ -47,7 +48,8 @@ char g_lcd_id[128];
 EXPORT_SYMBOL(g_lcd_id);
 extern int lct_nvt_tp_info_node_init(void);
 
-static void tp_fb_notifier_resume_work(struct kthread_work *work);
+struct pm_qos_request pm_qos_req;
+static void tp_fb_notifier_resume_work(struct work_struct *work);
 
 #if NVT_TOUCH_ESD_PROTECT
 static struct kthread_delayed_work nvt_esd_check_work;
@@ -152,6 +154,7 @@ int32_t CTP_I2C_READ(struct i2c_client *client, uint16_t address, uint8_t *buf, 
 	int32_t ret = -1;
 	int32_t retries = 0;
 
+	pm_qos_update_request(&pm_qos_req, 100);
 	mutex_lock(&ts->xbuf_lock);
 
 	msgs[0].flags = !I2C_M_RD;
@@ -174,9 +177,11 @@ int32_t CTP_I2C_READ(struct i2c_client *client, uint16_t address, uint8_t *buf, 
 		NVT_ERR("error, ret=%d\n", ret);
 		ret = -EIO;
 	}
+
 	memcpy(buf + 1, ts->xbuf, len - 1);
 
 	mutex_unlock(&ts->xbuf_lock);
+	pm_qos_update_request(&pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
 	return ret;
 }
@@ -194,6 +199,7 @@ int32_t CTP_I2C_WRITE(struct i2c_client *client, uint16_t address, uint8_t *buf,
 	int32_t ret = -1;
 	int32_t retries = 0;
 
+	pm_qos_update_request(&pm_qos_req, 100);
 	mutex_lock(&ts->xbuf_lock);
 
 	msg.flags = !I2C_M_RD;
@@ -214,6 +220,7 @@ int32_t CTP_I2C_WRITE(struct i2c_client *client, uint16_t address, uint8_t *buf,
 	}
 
 	mutex_unlock(&ts->xbuf_lock);
+	pm_qos_update_request(&pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
 	return ret;
 }
@@ -1487,6 +1494,7 @@ static int32_t nvt_ts_remove(struct i2c_client *client)
 	free_irq(client->irq, ts);
 	input_unregister_device(ts->input_dev);
 	i2c_set_clientdata(client, NULL);
+	pm_qos_remove_request(&pm_qos_req);
 	kfree(ts);
 
 	return 0;
@@ -1838,8 +1846,19 @@ return:
 static int32_t __init nvt_driver_init(void)
 {
 	int32_t ret = 0;
+	int cpu;
 
 	NVT_LOG("start\n");
+
+	pm_qos_req.type = PM_QOS_REQ_AFFINE_CORES;
+	cpumask_empty(&pm_qos_req.cpus_affine);
+	for_each_possible_cpu(cpu) {
+		if (cpumask_test_cpu(cpu, cpu_perf_mask))
+			cpumask_set_cpu(cpu, &pm_qos_req.cpus_affine);
+	}
+	pm_qos_add_request(&pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
+			PM_QOS_DEFAULT_VALUE);
+
 	if (IS_ERR_OR_NULL(g_lcd_id)){
 		NVT_ERR("g_lcd_id is ERROR!\n");
 		goto err_lcd;
