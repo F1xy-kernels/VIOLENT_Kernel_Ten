@@ -446,7 +446,7 @@ static long sync_file_ioctl_fence_info(struct sync_file *sync_file,
 	size = num_fences * sizeof(*fence_info);
 
 	if (likely(size <= sizeof(fence_info_onstack))) {
-		memset(fence_info_onstack, 0, sizeof(fence_info_onstack));
+		memset(&fence_info_onstack, 0, sizeof(fence_info_onstack));
 		fence_info = fence_info_onstack;
 	} else {
 		fence_info = kzalloc(size, GFP_KERNEL);
