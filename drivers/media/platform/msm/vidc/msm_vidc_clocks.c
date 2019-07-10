@@ -198,7 +198,7 @@ int msm_comm_vote_bus(struct msm_vidc_core *core)
 	int rc = 0, vote_data_count = 0, i = 0;
 	struct hfi_device *hdev;
 	struct msm_vidc_inst *inst = NULL;
-	struct vidc_bus_vote_data vote_data[MAX_SUPPORTED_INSTANCES] __aligned(8);
+	struct vidc_bus_vote_data vote_data[MAX_SUPPORTED_INSTANCES];
 	bool is_turbo = false;
 
 	if (!core || !core->device) {
@@ -207,7 +207,7 @@ int msm_comm_vote_bus(struct msm_vidc_core *core)
 	}
 	hdev = core->device;
 
-	memset(vote_data, 0, sizeof(struct vidc_bus_vote_data));
+	memset(&vote_data, 0, sizeof(vote_data));
 
 	mutex_lock(&core->lock);
 	list_for_each_entry(inst, &core->instances, list) {
