@@ -131,13 +131,11 @@ SCHED_FEAT(FBT_STRICT_ORDER, false)
  * generally leads to usage of higher frequencies.
  * If disabled, boosts will only bias tasks to higher-capacity CPUs.
  */
-SCHED_FEAT(SCHEDTUNE_BOOST_UTIL, true)
+SCHED_FEAT(SCHEDTUNE_BOOST_HOLD_ALL, false)
 
 /*
- * If the sync flag is set but ignored, prefer to
- * select cpu in the same cluster as current. So
- * if current is a big cpu and sync is set, indicate
- * that the selection algorithm for a boosted task
- * should be used.
+ * Inflate the effective utilization of SchedTune-boosted tasks, which
+ * generally leads to usage of higher frequencies.
+ * If disabled, boosts will only bias tasks to higher-capacity CPUs.
  */
-SCHED_FEAT(SYNC_BOOST, true)
+SCHED_FEAT(SCHEDTUNE_BOOST_UTIL, true)
