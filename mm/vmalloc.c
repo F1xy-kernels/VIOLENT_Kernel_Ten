@@ -2614,14 +2614,21 @@ retry:
 		}
 
 		/*
-		 * If prev overlaps, shift down next and prev and move
-		 * base so that it's right below new next and then
-		 * recheck.
+		 * If required width exeeds current VA block, move
+		 * base downwards and then recheck.
 		 */
-		if (prev && prev->va_end > base + start)  {
-			next = prev;
-			prev = node_to_va(rb_prev(&next->rb_node));
-			base = pvm_determine_end(&next, &prev, align) - end;
+		if (base + end > va->va_end) {
+			base = pvm_determine_end_from_reverse(&va, align) - end;
+			term_area = area;
+			continue;
+		}
+
+		/*
+		 * If this VA does not fit, move base downwards and recheck.
+		 */
+		if (base + start < va->va_start) {
+			va = node_to_va(rb_prev(&va->rb_node));
+			base = pvm_determine_end_from_reverse(&va, align) - end;
 			term_area = area;
 			continue;
 		}
