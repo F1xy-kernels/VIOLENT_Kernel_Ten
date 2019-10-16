@@ -1112,9 +1112,9 @@ retry:
 		 * Just proceed as it is. If needed "overflow" path
 		 * will refill the cache we allocate from.
 		 */
-		pva = kmem_cache_alloc_node(vmap_area_cachep, gfp_mask, node);
+		pva = kmem_cache_alloc_node(vmap_area_cachep, GFP_KERNEL, node);
 
-	spin_lock(&free_vmap_area_lock);
+	spin_lock(&vmap_area_lock);
 
 	if (pva && __this_cpu_cmpxchg(ne_fit_preload_node, NULL, pva))
 		kmem_cache_free(vmap_area_cachep, pva);
