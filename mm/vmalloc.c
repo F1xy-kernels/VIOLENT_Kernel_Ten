@@ -423,9 +423,9 @@ static struct vmap_area *alloc_vmap_area(unsigned long size,
 	BUG_ON(!is_power_of_2(align));
 
 	might_sleep();
+	gfp_mask = gfp_mask & GFP_RECLAIM_MASK;
 
-	va = kmalloc_node(sizeof(struct vmap_area),
-			gfp_mask & GFP_RECLAIM_MASK, node);
+	va = kmem_cache_alloc_node(vmap_area_cachep, gfp_mask, node);
 	if (unlikely(!va))
 		return ERR_PTR(-ENOMEM);
 
@@ -433,7 +433,7 @@ static struct vmap_area *alloc_vmap_area(unsigned long size,
 	 * Only scan the relevant parts containing pointers to other objects
 	 * to avoid false negatives.
 	 */
-	kmemleak_scan_area(&va->rb_node, SIZE_MAX, gfp_mask & GFP_RECLAIM_MASK);
+	kmemleak_scan_area(&va->rb_node, SIZE_MAX, gfp_mask);
 
 retry:
 	spin_lock(&vmap_area_lock);
@@ -460,7 +460,7 @@ retry:
 		 * Just proceed as it is. If needed "overflow" path
 		 * will refill the cache we allocate from.
 		 */
-		pva = kmem_cache_alloc_node(vmap_area_cachep, GFP_KERNEL, node);
+		pva = kmem_cache_alloc_node(vmap_area_cachep, gfp_mask, node);
 
 	spin_lock(&vmap_area_lock);
 
