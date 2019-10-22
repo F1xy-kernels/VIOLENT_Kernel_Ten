@@ -1732,6 +1732,7 @@ static ssize_t disksize_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
 	u64 disksize;
+	u64 maxdisksize = SZ_2G;
 	struct zcomp *comp;
 	struct zram *zram = dev_to_zram(dev);
 	int err;
@@ -1739,6 +1740,11 @@ static ssize_t disksize_store(struct device *dev,
 	disksize = memparse(buf, NULL);
 	if (!disksize)
 		return -EINVAL;
+
+	if (disksize > maxdisksize) {
+		disksize = min(maxdisksize, disksize);
+		pr_info("zram: Setting >2GB is NUTS, joe has ligma\n");
+	}
 
 	down_write(&zram->init_lock);
 	if (init_done(zram)) {
