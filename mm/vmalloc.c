@@ -1114,7 +1114,7 @@ retry:
 		 */
 		pva = kmem_cache_alloc_node(vmap_area_cachep, gfp_mask, node);
 
-	spin_lock(&vmap_area_lock);
+	spin_lock(&free_vmap_area_lock);
 
 	if (pva && __this_cpu_cmpxchg(ne_fit_preload_node, NULL, pva))
 		kmem_cache_free(vmap_area_cachep, pva);
@@ -1132,7 +1132,10 @@ retry:
 	va->va_start = addr;
 	va->va_end = addr + size;
 	va->vm = NULL;
+
+	spin_lock(&vmap_area_lock);
 	insert_vmap_area(va, &vmap_area_root, &vmap_area_list);
+	spin_unlock(&vmap_area_lock);
 
 	BUG_ON(!IS_ALIGNED(va->va_start, align));
 	BUG_ON(va->va_start < vstart);
@@ -2021,6 +2024,14 @@ static inline void setup_vmalloc_vm_locked(struct vm_struct *vm,
 	vm->size = va->va_end - va->va_start;
 	vm->caller = caller;
 	va->vm = vm;
+}
+
+static void setup_vmalloc_vm(struct vm_struct *vm, struct vmap_area *va,
+			      unsigned long flags, const void *caller)
+{
+	spin_lock(&vmap_area_lock);
+	setup_vmalloc_vm_locked(vm, va, flags, caller);
+	spin_unlock(&vmap_area_lock);
 }
 
 static void clear_vm_uninitialized_flag(struct vm_struct *vm)
