@@ -1743,7 +1743,7 @@ static ssize_t disksize_store(struct device *dev,
 
 	if (disksize > maxdisksize) {
 		disksize = min(maxdisksize, disksize);
-		pr_info("Setting >2GB is NUTS, joe has ligma\n");
+		pr_info("Setting > 2GB is not allowed\n");
 	}
 
 	down_write(&zram->init_lock);
