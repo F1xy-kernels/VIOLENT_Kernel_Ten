@@ -15,8 +15,6 @@
 #include <linux/of.h>
 #include <linux/sched/core_ctl.h>
 #include <trace/events/sched.h>
-#include <linux/cpu_input_boost.h>
-#include <linux/devfreq_boost.h>
 
 /*
  * Scheduler boost is a mechanism to temporarily place tasks on CPUs
@@ -55,7 +53,7 @@ static void set_boost_policy(int type)
 		return;
 	}
 
-	if (CONFIG_ARCH_SM8150) {
+	if (CONFIG_ARCH_SM6150) {
 		boost_policy = SCHED_BOOST_ON_BIG;
 		return;
 	}

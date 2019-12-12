@@ -101,6 +101,7 @@ unsigned int sysctl_sched_sync_hint_enable = 1;
  */
 unsigned int sysctl_sched_cstate_aware = 1;
 
+
 /*
  * The initial- and re-scaling of tunables is configurable
  *
@@ -983,6 +984,7 @@ update_stats_wait_end(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	schedstat_inc(se->statistics.wait_count);
 	schedstat_add(se->statistics.wait_sum, delta);
 	schedstat_set(se->statistics.wait_start, 0);
+
 }
 
 static inline void
@@ -5834,7 +5836,7 @@ cpu_is_in_target_set(struct task_struct *p, int cpu)
 }
 
 static inline bool
-bias_to_this_cpu(struct task_struct *p, int cpu, struct cpumask *rtg_target)
+bias_to_waker_cpu(struct task_struct *p, int cpu, struct cpumask *rtg_target)
 {
 	bool base_test = cpumask_test_cpu(cpu, &p->cpus_allowed) &&
 			cpu_active(cpu) && task_fits_max(p, cpu) &&
@@ -7414,7 +7416,6 @@ struct find_best_target_env {
 	int placement_boost;
 	bool need_idle;
 	int fastpath;
-	int skip_cpu;
 };
 
 static bool is_packing_eligible(struct task_struct *p, int target_cpu,
@@ -7493,7 +7494,6 @@ enum fastpaths {
 	NONE = 0,
 	SYNC_WAKEUP,
 	PREV_CPU_FASTPATH,
-	MANY_WAKEUP,
 };
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
@@ -7595,9 +7595,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				continue;
 
 			if (sched_cpu_high_irqload(i))
-				continue;
-
-			if (fbt_env->skip_cpu == i)
 				continue;
 
 			/*
@@ -8189,21 +8186,10 @@ static inline struct cpumask *find_rtg_target(struct task_struct *p)
 
 	return rtg_target;
 }
-
-static inline bool is_many_wakeup(int sibling_count_hint)
-{
-	return sibling_count_hint >= sysctl_sched_many_wakeup_threshold;
-}
-
 #else
 static inline struct cpumask *find_rtg_target(struct task_struct *p)
 {
 	return NULL;
-}
-
-static inline bool is_many_wakeup(int sibling_count_hint)
-{
-	return false;
 }
 #endif
 
