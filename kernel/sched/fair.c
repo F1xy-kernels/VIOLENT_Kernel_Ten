@@ -8184,13 +8184,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		goto out;
 	}
 
-	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-				bias_to_this_cpu(p, prev_cpu, rtg_target)) {
-		target_cpu = prev_cpu;
-		fbt_env.fastpath = MANY_WAKEUP;
-		goto out;
-	}
-
 	/* prepopulate energy diff environment */
 	eenv = get_eenv(p, prev_cpu);
 	if (eenv->max_cpu_count < 2)
@@ -8244,8 +8237,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		fbt_env.rtg_target = rtg_target;
 		fbt_env.placement_boost = placement_boost;
 		fbt_env.need_idle = need_idle;
-		fbt_env.skip_cpu = is_many_wakeup(sibling_count_hint) ?
-				   cpu : -1;
 
 		/* Find a cpu with sufficient capacity */
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,

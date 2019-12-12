@@ -499,6 +499,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 			/* clear cache when it's bypassed */
 			sg_policy->cached_raw_freq = 0;
 			return policy->cpuinfo.max_freq;
+		}
 
 		/*
 		 * If the util value for all CPUs in a policy is 0, just using >
@@ -566,8 +567,9 @@ static void sugov_update_shared(struct update_util_data *hook, u64 time,
 			/* clear cache when it's bypassed */
 			sg_policy->cached_raw_freq = 0;
 			next_f = sg_policy->policy->cpuinfo.max_freq;
-		else
+		} else {
 			next_f = sugov_next_freq_shared(sg_cpu, time);
+		}
 
 		sugov_update_commit(sg_policy, time, next_f);
 	}
