@@ -406,9 +406,16 @@ static int zs_zpool_malloc(void *pool, size_t size, gfp_t gfp,
 	*handle = zs_malloc(pool, size, gfp);
 	return *handle ? 0 : -1;
 }
+
 static void zs_zpool_free(void *pool, unsigned long handle)
 {
 	zs_free(pool, handle);
+}
+
+static int zs_zpool_shrink(void *pool, unsigned int pages,
+			unsigned int *reclaimed)
+{
+	return -EINVAL;
 }
 
 static void *zs_zpool_map(void *pool, unsigned long handle,
