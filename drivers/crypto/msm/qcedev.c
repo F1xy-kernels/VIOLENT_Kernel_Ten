@@ -1807,6 +1807,7 @@ static inline long qcedev_ioctl(struct file *file,
 			err = -EFAULT;
 			goto exit_free_qcedev_areq;
 		}
+		}
 		break;
 
 	case QCEDEV_IOCTL_SHA_FINAL_REQ:
@@ -1898,6 +1899,7 @@ static inline long qcedev_ioctl(struct file *file,
 					sizeof(struct qcedev_sha_op_req))) {
 			err = -EFAULT;
 			goto exit_free_qcedev_areq;
+		}
 		}
 		break;
 
