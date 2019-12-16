@@ -246,11 +246,6 @@ struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
 		dprintk(VIDC_ERR, "debugfs_create_file: fail\n");
 		goto failed_create_file;
 	}
-	if (IS_ERR_OR_NULL(debugfs_create_file("debug_level", 0644,
-			parent, core, &debug_level_fops))) {
-		dprintk(VIDC_ERR, "debugfs_create_file: fail\n");
-		goto failed_create_dir;
-	}
 failed_create_file:
 	debugfs_remove_recursive(dir);
 failed_create_dir:
