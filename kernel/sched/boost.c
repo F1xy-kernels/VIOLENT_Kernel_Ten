@@ -53,7 +53,7 @@ static void set_boost_policy(int type)
 		return;
 	}
 
-	if (CONFIG_ARCH_SM6150) {
+	if (min_possible_efficiency != max_possible_efficiency) {
 		boost_policy = SCHED_BOOST_ON_BIG;
 		return;
 	}
@@ -73,13 +73,13 @@ static void sched_no_boost_nop(void)
 static void sched_full_throttle_boost_enter(void)
 {
 	core_ctl_set_boost(true);
-	//walt_enable_frequency_aggregation(true);
+	walt_enable_frequency_aggregation(true);
 }
 
 static void sched_full_throttle_boost_exit(void)
 {
 	core_ctl_set_boost(false);
-	//walt_enable_frequency_aggregation(false);
+	walt_enable_frequency_aggregation(false);
 }
 
 static void sched_conservative_boost_enter(void)
@@ -94,12 +94,12 @@ static void sched_conservative_boost_exit(void)
 
 static void sched_restrained_boost_enter(void)
 {
-	//walt_enable_frequency_aggregation(true);
+	walt_enable_frequency_aggregation(true);
 }
 
 static void sched_restrained_boost_exit(void)
 {
-	//walt_enable_frequency_aggregation(false);
+	walt_enable_frequency_aggregation(false);
 }
 
 struct sched_boost_data {
@@ -214,13 +214,6 @@ static void sched_boost_disable_all(void)
 
 static void _sched_set_boost(int type)
 {
-#if defined(CONFIG_CPU_INPUT_BOOST) && defined(CONFIG_DEVFREQ_BOOST)
-	if (type > 0) {
-		cpu_input_boost_kick();
-		devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
-	}
-		return;
-#endif
 	if (type == 0)
 		sched_boost_disable_all();
 	else if (type > 0)
@@ -261,8 +254,6 @@ void sched_boost_parse_dt(void)
 int sched_set_boost(int type)
 {
 	int ret = 0;
-
-	return 0;
 
 	mutex_lock(&boost_mutex);
 	if (verify_boost_params(type))

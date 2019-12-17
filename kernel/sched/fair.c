@@ -101,7 +101,6 @@ unsigned int sysctl_sched_sync_hint_enable = 1;
  */
 unsigned int sysctl_sched_cstate_aware = 1;
 
-
 /*
  * The initial- and re-scaling of tunables is configurable
  *
@@ -198,11 +197,12 @@ unsigned int sched_capacity_margin_up[NR_CPUS] = {
 unsigned int sched_capacity_margin_down[NR_CPUS] = {
 			[0 ... NR_CPUS-1] = 1205}; /* ~15% margin */
 
+#ifdef CONFIG_SCHED_WALT
 /* 1ms default for 20ms window size scaled to 1024 */
 unsigned int sysctl_sched_min_task_util_for_boost = 51;
 /* 0.68ms default for 20ms window size scaled to 1024 */
 unsigned int sysctl_sched_min_task_util_for_colocation = 35;
-
+#endif
 static unsigned int __maybe_unused sched_small_task_threshold = 102;
 
 static inline void update_load_add(struct load_weight *lw, unsigned long inc)
@@ -984,7 +984,6 @@ update_stats_wait_end(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	schedstat_inc(se->statistics.wait_count);
 	schedstat_add(se->statistics.wait_sum, delta);
 	schedstat_set(se->statistics.wait_start, 0);
-
 }
 
 static inline void
@@ -5997,8 +5996,6 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 #endif
 	unsigned int util;
 
-	struct cfs_rq *cfs_rq;
-
 #ifdef CONFIG_SCHED_WALT
 	/*
 	 * WALT does not decay idle tasks in the same manner
@@ -8205,7 +8202,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 				     int sync, bool sync_boost)
 {
 	int use_fbt = sched_feat(FIND_BEST_TARGET);
-	int use_sync_boost = sched_feat(SYNC_BOOST);
 	int cpu_iter, eas_cpu_idx = EAS_CPU_NXT;
 	int delta = 0;
 	int target_cpu = -1;
@@ -8232,12 +8228,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		target_cpu = cpu;
 		fbt_env.fastpath = SYNC_WAKEUP;
 		goto out;
-	}
-
-	if (use_sync_boost) {
-		sync_boost = sync && cpu >= cpu_rq(cpu)->rd->mid_cap_orig_cpu;
-	} else {
-		sync_boost = false;
 	}
 
 	/* prepopulate energy diff environment */
@@ -8348,7 +8338,7 @@ out:
 	trace_sched_task_util(p, next_cpu, backup_cpu, target_cpu, sync,
 			need_idle, fbt_env.fastpath, placement_boost,
 			rtg_target ? cpumask_first(rtg_target) : -1, start_t,
-			boosted, sync_boost);
+			boosted);
 	return target_cpu;
 }
 
@@ -9815,6 +9805,10 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 {
 	unsigned long capacity = arch_scale_cpu_capacity(sd, cpu);
 	struct sched_group *sdg = sd->groups;
+	struct max_cpu_capacity *mcc;
+	unsigned long max_capacity;
+	int max_cap_cpu;
+	unsigned long flags;
 
 	capacity *= arch_scale_max_freq_capacity(sd, cpu);
 	capacity >>= SCHED_CAPACITY_SHIFT;
@@ -9822,6 +9816,26 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 	capacity = min(capacity, thermal_cap(cpu));
 	cpu_rq(cpu)->cpu_capacity_orig = capacity;
 
+	mcc = &cpu_rq(cpu)->rd->max_cpu_capacity;
+
+	raw_spin_lock_irqsave(&mcc->lock, flags);
+	max_capacity = mcc->val;
+	max_cap_cpu = mcc->cpu;
+
+	if ((max_capacity > capacity && max_cap_cpu == cpu) ||
+	    max_capacity < capacity) {
+		mcc->val = capacity;
+		mcc->cpu = cpu;
+#ifdef CONFIG_SCHED_DEBUG
+		raw_spin_unlock_irqrestore(&mcc->lock, flags);
+		printk_deferred(KERN_INFO "CPU%d: update max cpu_capacity %lu\n",
+				cpu, capacity);
+		goto skip_unlock;
+#endif
+	}
+	raw_spin_unlock_irqrestore(&mcc->lock, flags);
+
+skip_unlock: __attribute__ ((unused));
 	capacity *= scale_rt_capacity(cpu);
 	capacity >>= SCHED_CAPACITY_SHIFT;
 
@@ -11291,9 +11305,7 @@ no_move:
 				busiest->active_balance = 1;
 				busiest->push_cpu = this_cpu;
 				active_balance = 1;
-#ifdef CONFIG_SCHED_WALT
 				mark_reserved(this_cpu);
-#endif
 			}
 			raw_spin_unlock_irqrestore(&busiest->lock, flags);
 
