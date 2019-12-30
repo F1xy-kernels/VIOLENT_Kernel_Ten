@@ -493,7 +493,7 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 			pwr->previous_pwrlevel,
 			pwr->pwrlevels[old_level].gpu_freq);
 
-	trace_gpu_frequency(pwrlevel->gpu_freq/1000, 0);
+	/*trace_gpu_frequency(pwrlevel->gpu_freq/1000, 0);*/
 
 	/*
 	 * Some targets do not support the bandwidth requirement of
