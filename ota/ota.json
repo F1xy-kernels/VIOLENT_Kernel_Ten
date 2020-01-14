@@ -1,11 +1,11 @@
 {
   "kernel": {
     "name": "F1xy Kernel",
-    "version": "21.3",
-    "link": "https://github.com/XeonDead/VIOLENT_Kernel/releases/download/21-3/F1XY-violet-v21-3.zip",
+    "version": "v21.4",
+    "link": "https://github.com/XeonDead/VIOLENT_Kernel/releases/download/v21-4/F1XY-violet-v21-4.zip",
     "changelog_url": "https://raw.githubusercontent.com/XeonDead/VIOLENT_Kernel/ten-f1xy/ota/changelog",
-    "date": "2020-01-13",
-    "sha1": "4a96341f85426877bb00e11a45f849495448c9fa"
+    "date": "2020-01-14",
+    "sha1": "bb8dd1920d0e5211622e2c4baeaab8b2690cb9be"
   },
   "support": {
     "link": "https://t.me/f1xy_violent"
