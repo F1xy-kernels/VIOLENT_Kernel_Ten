@@ -1,37 +1,5 @@
-**F1xy Kernel release for Redmi Note 7 Pro (violet)**
-Linux Version: [4.14.164](https://github.com/XeonDead/VIOLENT_Kernel/commit/6805df0aa28e8adf77011fe7258e2878608d5bc8)
-HEAD: 6805df0
-
----
-**Initial F1xy release for Redmi Note 7 Pro (violet):**
-
-- Using PixelExperience kernel as [base](https://github.com/PixelExperience-Devices/kernel_xiaomi_sm6150)
-- Update to [Linux 4.14.164](https://github.com/XeonDead/VIOLENT_Kernel/commit/6805df0aa28e8adf77011fe7258e2878608d5bc8)
-- Updated to latest CAF 4.14 sources (per base)
-- Update to mainline [f2fs-stable](https://github.com/XeonDead/VIOLENT_Kernel/commit/9b1091cc836cc4ced3911dc74b62a22658652e33) (linux-4.14.y)
-- Extensive upstream EAS/scheduling optimizations
-  * Pure PELT based on floral implementation
-  * Removed sched_boost
-- Custom CPU boosting and frequency control
-- [Simple Low Memory Killer](https://github.com/XeonDead/VIOLENT_Kernel/commit/1fa114385f87d65c26f5dc3491e89f6484470437)
-- vDSO32 support
-- Substantial touchscreen driver optimization
-- Checkout zRAM drivers to ACK [android-4.14](https://github.com/XeonDead/VIOLENT_Kernel/commit/bd3d5378b602cf9c09286a8644d05c9103dbf9ee)
-  * Enable z3fold and checkout to [mainline 5.3](https://github.com/XeonDead/VIOLENT_Kernel/commit/8460bce29772327e274d704375079af5d19f79b2)
-  * Enable zpool
-  * Enable zstd and merge [Samsung optimizations](https://github.com/XeonDead/VIOLENT_Kernel/commit/665667061bc8835e320bd7171790107c231fa219)
-- Mainline vmalloc memory allocation patches
-- Default upstreamed CFQ I/O scheduler
-- Modernize and enable [Maple I/O scheduler](https://github.com/XeonDead/VIOLENT_Kernel/commit/8438d9aa169fc209de3877f53ebcc9916e9a531b)
-- Mainline BBR updates (Default TCP algorithm)
-- Import [Agile-SD](https://github.com/XeonDead/VIOLENT_Kernel/commit/27cc3a1ecbf8ab7e264eb12564c01c6e925555bf) TCP algorithm
-- Treewide VLA removal
-- Treewide dynamic memory alloc avoidance
-- Eliminate GPU debug logging
-- Disable kernel log writeback debugging
-- [Wireguard support](https://github.com/XeonDead/VIOLENT_Kernel/commit/876f73a92b05fbd870e3e12e194583564a73ab17)
-- Numerous optimizations courtesy of @kerneltoast, @arter97
-- Complete in-kernel configuration and init protection (No scripts, no modules, no problems)
-- Compiled with custom upstream [Clang 10](https://github.com/kdrag0n/proton-clang-build) toolchains
-
-([Complete Changelog](https://github.com/XeonDead/VIOLENT_Kernel/commits/ten-f1xy))
+- Installer update, impoved Magisk preservation.
+- Switched to LMKD, memory management should be improved.
+- Enabled TTL targeting.
+- Merged 4.14.165.
+- Sped up a few frequent allocations.
