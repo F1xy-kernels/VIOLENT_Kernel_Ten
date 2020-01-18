@@ -6003,17 +6003,6 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 	if (ipa3_is_ready())
 		goto end_msg;
 
-	/*Ignore empty ipa_config file*/
-	for (i = 0 ; i < count ; ++i) {
-		if (!isspace(dbg_buff[i]))
-			break;
-	}
-
-	if (i == count) {
-		IPADBG("Empty ipa_config file\n");
-		return count;
-	}
-
 	/* Check MHI configuration on MDM devices */
 	if (!ipa3_is_msm_device()) {
 
