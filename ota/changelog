@@ -1,5 +1,6 @@
-- Installer update, impoved Magisk preservation.
-- Switched to LMKD, memory management should be improved.
-- Enabled TTL targeting.
-- Merged 4.14.165.
-- Sped up a few frequent allocations.
+- adreno_ringbuffer, _iommu: restore dynamic allocations
+- defconfig: enable SCHED_STACK_END_CHECK
+- drm/msm, cgroup, async: use kmem_cache allocations
+- use CPU_INPUT_BOOST to handle frequencies
+- enable QTI_RPM_STATS_LOG and MSM_IDLE_STATS to better track power usage
+- Merged LA.UM.8.1.r1-13500-sm8150.0
