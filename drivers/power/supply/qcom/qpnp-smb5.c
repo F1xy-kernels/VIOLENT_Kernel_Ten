@@ -728,7 +728,9 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_VPH,
 	POWER_SUPPLY_PROP_THERM_ICL_LIMIT,
 	POWER_SUPPLY_PROP_SKIN_HEALTH,
-	POWER_SUPPLY_PROP_TYPE_RECHECK,
+	POWER_SUPPLY_PROP_APSD_RERUN,
+	POWER_SUPPLY_PROP_APSD_TIMEOUT,
+        POWER_SUPPLY_PROP_TYPE_RECHECK,
 };
 
 static int smb5_usb_get_prop(struct power_supply *psy,
@@ -906,8 +908,14 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SKIN_HEALTH:
 		val->intval = smblib_get_skin_temp_status(chg);
 		break;
-	case POWER_SUPPLY_PROP_TYPE_RECHECK:
-		rc = smblib_get_prop_type_recheck(chg, val);
+	case POWER_SUPPLY_PROP_APSD_RERUN:
+		val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_APSD_TIMEOUT:
+		val->intval = chg->apsd_ext_timeout;
+		break;
+        case POWER_SUPPLY_PROP_TYPE_RECHECK:
+                rc = smblib_get_prop_type_recheck(chg, val);
 		break;
 	default:
 		pr_err("get prop %d is not supported in usb\n", psp);
@@ -998,7 +1006,12 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ADAPTER_CC_MODE:
 		chg->adapter_cc_mode = val->intval;
 		break;
-	case POWER_SUPPLY_PROP_TYPE_RECHECK:
+	case POWER_SUPPLY_PROP_APSD_RERUN:
+		del_timer_sync(&chg->apsd_timer);
+		chg->apsd_ext_timeout = false;
+		smblib_rerun_apsd(chg);
+		break;
+        case POWER_SUPPLY_PROP_TYPE_RECHECK:
 		rc = smblib_set_prop_type_recheck(chg, val);
 		break;
 	default:

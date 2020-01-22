@@ -1047,7 +1047,9 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 	/* if PD is active, APSD is disabled so won't have a valid result */
 	if (chg->pd_active) {
 		chg->real_charger_type = POWER_SUPPLY_TYPE_USB_PD;
-                chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB_PD;
+		chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB_PD;
+	} else if (chg->qc3p5_detected) {
+		chg->real_charger_type = POWER_SUPPLY_TYPE_USB_HVDCP_3P5;
 	} else {
 		/*
 		 * Update real charger type only if its not FLOAT
@@ -5381,20 +5383,38 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 	/* the APSD done handler will set the USB supply type */
 	apsd_result = smblib_get_apsd_result(chg);
 
-	/* for QC3, switch to CP if present */
-	if ((apsd_result->bit & QC_3P0_BIT) && chg->sec_cp_present) {
-		rc = smblib_select_sec_charger(chg, POWER_SUPPLY_CHARGER_SEC_CP,
-					POWER_SUPPLY_CP_HVDCP3, false);
-		if (rc < 0)
-			dev_err(chg->dev,
-			"Couldn't enable secondary chargers  rc=%d\n", rc);
-	} else if (apsd_result->bit & QC_2P0_BIT && !chg->qc2_unsupported) {
-		pr_info("force 9V for QC2 charger\n");
-		rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT);
-		if (rc < 0)
-			pr_err("Failed to force 9V\n");
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-				HVDCP2_CURRENT_UA);
+	if (apsd_result->bit & QC_3P0_BIT) {
+		/* for QC3, switch to CP if present */
+		if (chg->sec_cp_present) {
+			rc = smblib_select_sec_charger(chg,
+				POWER_SUPPLY_CHARGER_SEC_CP,
+				POWER_SUPPLY_CP_HVDCP3, false);
+			if (rc < 0)
+				dev_err(chg->dev,
+				"Couldn't enable secondary chargers  rc=%d\n",
+					rc);
+
+		} else if (chg->sec_cp_present & QC_2P0_BIT && !chg->qc2_unsupported) {
+			pr_info("force 9V for QC2 charger\n");
+			rc = smblib_force_vbus_voltage(chg,
+				 FORCE_9V_BIT);
+			if (rc < 0)
+				pr_err("Failed to force 9V\n");
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+					HVDCP2_CURRENT_UA);
+		}
+
+		/* QC3.5 detection timeout */
+		if (!chg->apsd_ext_timeout &&
+				!timer_pending(&chg->apsd_timer)) {
+			smblib_dbg(chg, PR_MISC,
+				"APSD Extented timer started at %lld\n",
+				jiffies_to_msecs(jiffies));
+
+			mod_timer(&chg->apsd_timer,
+				msecs_to_jiffies(APSD_EXTENDED_TIMEOUT_MS)
+				+ jiffies);
+		}
 	}
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: hvdcp-3p0-auth-done rising; %s detected\n",
@@ -5901,7 +5921,9 @@ static void typec_src_removal(struct smb_charger *chg)
 		smblib_notify_device_mode(chg, false);
 
 	chg->typec_legacy = false;
-	chg->qc2_unsupported = false;
+	del_timer_sync(&chg->apsd_timer);
+	chg->apsd_ext_timeout = false;
+        chg->qc2_unsupported = false;
 	chg->recheck_charger = false;
 }
 
