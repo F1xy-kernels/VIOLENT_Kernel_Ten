@@ -315,7 +315,7 @@ struct bias_config {
 	int	bias_kohms;
 };
 
-static int fg_gen4_debug_mask = 0;
+static int fg_gen4_debug_mask;
 module_param_named(
 	debug_mask, fg_gen4_debug_mask, int, 0600
 );
@@ -5934,6 +5934,7 @@ static int fg_gen4_probe(struct platform_device *pdev)
 	if (rc < 0) {
 		dev_err(fg->dev, "Error in creating debugfs entries, rc:%d\n",
 			rc);
+		goto exit;
 	}
 
 	rc = fg_get_battery_voltage(fg, &volt_uv);
