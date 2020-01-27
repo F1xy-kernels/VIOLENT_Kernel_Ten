@@ -1,6 +1,7 @@
-- adreno_ringbuffer, _iommu: restore dynamic allocations
-- defconfig: enable SCHED_STACK_END_CHECK
-- drm/msm, cgroup, async: use kmem_cache allocations
-- use CPU_INPUT_BOOST to handle frequencies
-- enable QTI_RPM_STATS_LOG and MSM_IDLE_STATS to better track power usage
-- Merged LA.UM.8.1.r1-13500-sm8150.0
+- Merged 4.14.167
+- Removed some memory leaks
+- Added no_console_suspend and cgroup.memory cmdline flags
+- Patched cmdline flags for SafetyNet
+- Moved back to using SLMK now that it's fixed
+- Kernel logspam removed
+- Disabled SAE and GCMP in the qcacld-3.0, which should fix the WiFi issues (if someone had them)
