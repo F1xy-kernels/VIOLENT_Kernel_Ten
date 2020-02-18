@@ -159,9 +159,12 @@ static ssize_t rcu_expedited_store(struct kobject *kobj,
 				   struct kobj_attribute *attr,
 				   const char *buf, size_t count)
 {
+/*
 	if (kstrtoint(buf, 0, &rcu_expedited))
 		return -EINVAL;
+*/
 
+	rcu_expedited = 0;
 	return count;
 }
 KERNEL_ATTR_RW(rcu_expedited);

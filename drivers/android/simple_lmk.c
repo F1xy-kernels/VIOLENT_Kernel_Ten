@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2019 Sultan Alsawaf <sultan@kerneltoast.com>.
+ * Copyright (C) 2019-2020 Sultan Alsawaf <sultan@kerneltoast.com>.
  */
 
 #define pr_fmt(fmt) "simple_lmk: " fmt
@@ -10,32 +10,16 @@
 #include <linux/moduleparam.h>
 #include <linux/oom.h>
 #include <linux/sort.h>
-#include <linux/version.h>
-
-/* The sched_param struct is located elsewhere in newer kernels */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 #include <uapi/linux/sched/types.h>
-#endif
-
-/* SEND_SIG_FORCED isn't present in newer kernels */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
-#define SIG_INFO_TYPE SEND_SIG_FORCED
-#else
-#define SIG_INFO_TYPE SEND_SIG_PRIV
-#endif
-
-/* The group argument to do_send_sig_info is different in newer kernels */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
-#define KILL_GROUP_TYPE true
-#else
-#define KILL_GROUP_TYPE PIDTYPE_TGID
-#endif
 
 /* The minimum number of pages to free per reclaim */
 #define MIN_FREE_PAGES (CONFIG_ANDROID_SIMPLE_LMK_MINFREE * SZ_1M / PAGE_SIZE)
 
 /* Kill up to this many victims per reclaim */
 #define MAX_VICTIMS 1024
+
+/* Timeout in jiffies for each reclaim */
+#define RECLAIM_EXPIRES msecs_to_jiffies(CONFIG_ANDROID_SIMPLE_LMK_TIMEOUT_MSEC)
 
 struct victim_info {
 	struct task_struct *tsk;
@@ -66,8 +50,10 @@ static const short adj_prio[] = {
 static struct victim_info victims[MAX_VICTIMS];
 static DECLARE_WAIT_QUEUE_HEAD(oom_waitq);
 static DECLARE_COMPLETION(reclaim_done);
-static atomic_t victims_to_kill = ATOMIC_INIT(0);
+static DEFINE_RWLOCK(mm_free_lock);
+static int victims_to_kill;
 static atomic_t needs_reclaim = ATOMIC_INIT(0);
+static atomic_t nr_killed = ATOMIC_INIT(0);
 
 static int victim_size_cmp(const void *lhs_ptr, const void *rhs_ptr)
 {
@@ -96,18 +82,22 @@ static unsigned long find_victims(int *vindex, short target_adj)
 	struct task_struct *tsk;
 
 	for_each_process(tsk) {
+		struct signal_struct *sig;
 		struct task_struct *vtsk;
 
 		/*
-		 * Search for tasks with the targeted importance (adj). Since
-		 * only tasks with a positive adj can be targeted, that
+		 * Search for suitable tasks with the targeted importance (adj).
+		 * Since only tasks with a positive adj can be targeted, that
 		 * naturally excludes tasks which shouldn't be killed, like init
 		 * and kthreads. Although oom_score_adj can still be changed
 		 * while this code runs, it doesn't really matter. We just need
 		 * to make sure that if the adj changes, we won't deadlock
 		 * trying to lock a task that we locked earlier.
 		 */
-		if (READ_ONCE(tsk->signal->oom_score_adj) != target_adj ||
+		sig = tsk->signal;
+		if (READ_ONCE(sig->oom_score_adj) != target_adj ||
+		    sig->flags & (SIGNAL_GROUP_EXIT | SIGNAL_GROUP_COREDUMP) ||
+		    (thread_group_empty(tsk) && tsk->flags & PF_EXITING) ||
 		    vtsk_is_duplicate(*vindex, tsk))
 			continue;
 
@@ -167,7 +157,7 @@ static int process_victims(int vlen, unsigned long pages_needed)
 
 static void scan_and_kill(unsigned long pages_needed)
 {
-	int i, nr_to_kill = 0, nr_victims = 0;
+	int i, nr_to_kill = 0, nr_victims = 0, ret;
 	unsigned long pages_found = 0;
 
 	/*
@@ -184,8 +174,10 @@ static void scan_and_kill(unsigned long pages_needed)
 	read_unlock(&tasklist_lock);
 
 	/* Pretty unlikely but it can happen */
-	if (unlikely(!nr_victims))
+	if (unlikely(!nr_victims)) {
+		pr_err("No processes available to kill!\n");
 		return;
+	}
 
 	/* First round of victim processing to weed out unneeded victims */
 	nr_to_kill = process_victims(nr_victims, pages_needed);
@@ -200,40 +192,52 @@ static void scan_and_kill(unsigned long pages_needed)
 	/* Second round of victim processing to finally select the victims */
 	nr_to_kill = process_victims(nr_to_kill, pages_needed);
 
+	/* Store the final number of victims for simple_lmk_mm_freed() */
+	write_lock(&mm_free_lock);
+	victims_to_kill = nr_to_kill;
+	write_unlock(&mm_free_lock);
+
 	/* Kill the victims */
-	atomic_set_release(&victims_to_kill, nr_to_kill);
 	for (i = 0; i < nr_to_kill; i++) {
+		static const struct sched_param sched_zero_prio;
 		struct victim_info *victim = &victims[i];
-		struct task_struct *vtsk = victim->tsk;
+		struct task_struct *t, *vtsk = victim->tsk;
 
 		pr_info("Killing %s with adj %d to free %lu KiB\n", vtsk->comm,
 			vtsk->signal->oom_score_adj,
 			victim->size << (PAGE_SHIFT - 10));
 
 		/* Accelerate the victim's death by forcing the kill signal */
-		do_send_sig_info(SIGKILL, SIG_INFO_TYPE, vtsk, KILL_GROUP_TYPE);
+		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, vtsk, true);
 
-		/* Grab a reference to the victim for later before unlocking */
-		get_task_struct(vtsk);
+		/* Mark the thread group dead so that other kernel code knows */
+		rcu_read_lock();
+		for_each_thread(vtsk, t)
+			set_tsk_thread_flag(t, TIF_MEMDIE);
+		rcu_read_unlock();
+
+		/* Elevate the victim to SCHED_RR with zero RT priority */
+		sched_setscheduler_nocheck(vtsk, SCHED_RR, &sched_zero_prio);
+
+		/* Allow the victim to run on any CPU. This won't schedule. */
+		set_cpus_allowed_ptr(vtsk, cpu_all_mask);
+
+		/* Finally release the victim's task lock acquired earlier */
 		task_unlock(vtsk);
 	}
 
-	/* Try to speed up the death process now that we can schedule again */
-	for (i = 0; i < nr_to_kill; i++) {
-		struct task_struct *vtsk = victims[i].tsk;
-
-		/* Increase the victim's priority to make it die faster */
-		set_user_nice(vtsk, MIN_NICE);
-
-		/* Allow the victim to run on any CPU */
-		set_cpus_allowed_ptr(vtsk, cpu_all_mask);
-
-		/* Finally release the victim reference acquired earlier */
-		put_task_struct(vtsk);
+	/* Wait until all the victims die or until the timeout is reached */
+	ret = wait_for_completion_timeout(&reclaim_done, RECLAIM_EXPIRES);
+	write_lock(&mm_free_lock);
+	if (!ret) {
+		/* Extra clean-up is needed when the timeout is hit */
+		reinit_completion(&reclaim_done);
+		for (i = 0; i < nr_to_kill; i++)
+			victims[i].mm = NULL;
 	}
-
-	/* Wait until all the victims die */
-	wait_for_completion(&reclaim_done);
+	victims_to_kill = 0;
+	nr_killed = (atomic_t)ATOMIC_INIT(0);
+	write_unlock(&mm_free_lock);
 }
 
 static int simple_lmk_reclaim_thread(void *data)
@@ -260,20 +264,17 @@ void simple_lmk_decide_reclaim(int kswapd_priority)
 
 void simple_lmk_mm_freed(struct mm_struct *mm)
 {
-	static atomic_t nr_killed = ATOMIC_INIT(0);
-	int i, nr_to_kill;
+	int i;
 
-	nr_to_kill = atomic_read_acquire(&victims_to_kill);
-	for (i = 0; i < nr_to_kill; i++) {
+	read_lock(&mm_free_lock);
+	for (i = 0; i < victims_to_kill; i++) {
 		if (cmpxchg(&victims[i].mm, mm, NULL) == mm) {
-			if (atomic_inc_return(&nr_killed) == nr_to_kill) {
-				atomic_set(&victims_to_kill, 0);
-				nr_killed = (atomic_t)ATOMIC_INIT(0);
+			if (atomic_inc_return(&nr_killed) == victims_to_kill)
 				complete(&reclaim_done);
-			}
 			break;
 		}
 	}
+	read_unlock(&mm_free_lock);
 }
 
 /* Initialize Simple LMK when lmkd in Android writes to the minfree parameter */

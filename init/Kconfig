@@ -1831,6 +1831,32 @@ config SLAB_FREELIST_HARDENED
 	  sacrifies to harden the kernel slab allocator against common
 	  freelist exploit methods.
 
+config SLAB_HARDENED
+	default y
+	depends on SLUB
+	bool "Hardened SLAB infrastructure"
+	help
+          Make minor performance sacrifices to harden the kernel slab
+          allocator.
+
+config SLAB_SANITIZE
+	bool "Sanitize SLAB allocations"
+	depends on SLUB
+	default y
+	help
+	  Zero fill slab allocations on free, reducing the lifetime of
+	  sensitive data and helping to mitigate use-after-free bugs.
+
+	  For slabs with debug poisoning enabling, this has no impact.
+
+config SLAB_SANITIZE_VERIFY
+	depends on SLAB_SANITIZE && PAGE_SANITIZE
+	default y
+	bool "Verify sanitized SLAB allocations"
+	help
+	  Verify that newly allocated slab allocations are zeroed to detect
+	  write-after-free bugs.
+
 config SLUB_CPU_PARTIAL
 	default y
 	depends on SLUB && SMP
