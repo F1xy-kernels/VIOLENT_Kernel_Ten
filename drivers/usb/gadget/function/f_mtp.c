@@ -407,8 +407,9 @@ static struct usb_request *mtp_request_new(struct usb_ep *ep, int buffer_size)
 		return NULL;
 
 	/* now allocate buffers for the requests */
-	req->buf = kmalloc(buffer_size, GFP_KERNEL);
+	req->buf = kmalloc(buffer_size, GFP_KERNEL | __GFP_NOWARN);
 	if (!req->buf) {
+		pr_err("%s: allocation size %i too big", __func__, buffer_size);
 		usb_ep_free_request(ep, req);
 		return NULL;
 	}
