@@ -97,39 +97,49 @@ static int blk_softirq_cpu_dead(unsigned int cpu)
 
 void __blk_complete_request(struct request *req)
 {
-	int completion_cpu, this_cpu;
+	int ccpu, cpu;
 	struct request_queue *q = req->q;
 	unsigned long flags;
-	bool do_local = true;
+	bool shared = false;
 
 	BUG_ON(!q->softirq_done_fn);
 
 	local_irq_save(flags);
-	this_cpu = smp_processor_id();
+	cpu = smp_processor_id();
 
+	/*
+	 * Select completion CPU
+	 */
 	if (req->cpu != -1) {
-		completion_cpu = req->cpu;
-
-		/* Check the request flags and see if we should do an IPI */
-		if (test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags) ||
-			(test_bit(QUEUE_FLAG_SAME_READ, &q->queue_flags) &&
-			rq_data_dir(req) == READ))
-			do_local = false;
-		else
-			do_local = cpus_share_cache(this_cpu, completion_cpu);
+		ccpu = req->cpu;
+		if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags))
+			shared = cpus_share_cache(cpu, ccpu);
 	} else
-		completion_cpu = this_cpu;
+		ccpu = cpu;
 
-	/* Complete on the current CPU or process an IPI to the request CPU */
-	if (completion_cpu == this_cpu || do_local) {
+	/*
+	 * If current CPU and requested CPU share a cache, run the softirq on
+	 * the current CPU. One might concern this is just like
+	 * QUEUE_FLAG_SAME_FORCE, but actually not. blk_complete_request() is
+	 * running in interrupt handler, and currently I/O controller doesn't
+	 * support multiple interrupts, so current CPU is unique actually. This
+	 * avoids IPI sending from current CPU to the first CPU of a group.
+	 */
+	if (ccpu == cpu || shared) {
 		struct list_head *list;
 do_local:
 		list = this_cpu_ptr(&blk_cpu_done);
 		list_add_tail(&req->ipi_list, list);
 
+		/*
+		 * if the list only contains our just added request,
+		 * signal a raise of the softirq. If there are already
+		 * entries there, someone already raised the irq but it
+		 * hasn't run yet.
+		 */
 		if (list->next == &req->ipi_list)
 			raise_softirq_irqoff(BLOCK_SOFTIRQ);
-	} else if (raise_blk_irq(completion_cpu, req))
+	} else if (raise_blk_irq(ccpu, req))
 		goto do_local;
 
 	local_irq_restore(flags);
