@@ -1,7 +1,5 @@
-- Merged 4.14.167
-- Removed some memory leaks
-- Added no_console_suspend and cgroup.memory cmdline flags
-- Patched cmdline flags for SafetyNet
-- Moved back to using SLMK now that it's fixed
-- Kernel logspam removed
-- Disabled SAE and GCMP in the qcacld-3.0, which should fix the WiFi issues (if someone had them)
+- Merged 4.14.171
+- Merged security patches (Android February 2020)
+- Merged f2fs-stable upstream
+- Updated SLMK
+- Some additional mutex/semaphone/qspinlock updates
