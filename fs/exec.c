@@ -1677,6 +1677,53 @@ int search_binary_handler(struct linux_binprm *bprm)
 }
 EXPORT_SYMBOL(search_binary_handler);
 
+int sec_check_execpath(struct task_struct *tsk, char *denypath)
+{
+	struct file *exe_file;
+	char *path, *pathbuf = NULL;
+	unsigned int path_length = 0, denypath_length = 0;
+	int ret = 0;
+	struct mm_struct *mm = get_task_mm(tsk);
+
+	if (mm == NULL) {
+		pr_info("Cannot get mm.\n");
+		return 0;
+	}
+
+	exe_file = get_mm_exe_file(mm);
+	if (!exe_file) {
+		pr_info("Cannot get exe from task->mm.\n");
+		goto out_nofile;
+	}
+
+	pathbuf = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (!pathbuf) {
+		pr_info("failed to kmalloc for pathbuf\n");
+		goto out;
+	}
+
+	path = d_path(&exe_file->f_path, pathbuf, PATH_MAX);
+	if (IS_ERR(path)) {
+		pr_info("Error get path..\n");
+		goto out;
+	}
+
+	path_length = strlen(path);
+	denypath_length = strlen(denypath);
+
+	if (!strncmp(path, denypath, (path_length < denypath_length) ?
+			path_length : denypath_length)) {
+	ret = 1;
+	}
+out:
+	fput(exe_file);
+out_nofile:
+	if (pathbuf)
+		kfree(pathbuf);
+  return ret;
+}
+EXPORT_SYMBOL(sec_check_execpath);
+
 static int exec_binprm(struct linux_binprm *bprm)
 {
 	pid_t old_pid, old_vpid;

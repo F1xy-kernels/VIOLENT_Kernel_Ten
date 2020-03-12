@@ -162,4 +162,5 @@ static inline bool task_is_booster(struct task_struct *tsk)
 	       !strcmp(comm, "init.qcom.post_");
 }
 
+extern int sec_check_execpath(struct task_struct *tsk, char *denypath);
 #endif /* _LINUX_BINFMTS_H */
