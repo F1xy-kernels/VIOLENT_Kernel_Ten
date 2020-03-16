@@ -6,11 +6,8 @@
 # function. Nothing will happen if you execute it.
 #
 
-# Proton Clang build (version + ISO 8601 date)
-proton_clang_build="20200307"
-
 # Path to executables in Clang toolchain
-clang_bin="$HOME/toolchains/proton-clang-$proton_clang_build/bin"
+clang_bin="$HOME/toolchains/proton-clang/bin"
 
 # 64-bit GCC toolchain prefix
 gcc_prefix64="aarch64-linux-gnu-"
