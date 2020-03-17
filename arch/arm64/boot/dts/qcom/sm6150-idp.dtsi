@@ -325,15 +325,13 @@
 
 &pm6150_qg {
 	qcom,battery-data = <&mtp_batterydata>;
-	/delete-property/ qcom,qg-iterm-ma ;
-	qcom,qg-iterm-ma = <200>;
+	qcom,qg-iterm-ma = <100>;
 	qcom,hold-soc-while-full;
 	qcom,linearize-soc;
 	qcom,cl-feedback-on;
 };
 
 &pm6150_charger {
-	/delete-property/ qcom,thermal-mitigation;
 	io-channels = <&pm6150_vadc ADC_USB_IN_V_16>,
 		      <&pm6150_vadc ADC_USB_IN_I>,
 		      <&pm6150_vadc ADC_CHG_TEMP>,
@@ -354,11 +352,8 @@
 	qcom,sw-jeita-enable;
 	qcom,fcc-stepping-enable;
 	qcom,suspend-input-on-debug-batt;
-	qcom,sec-charger-config = <0>;
-	qcom,qg-vadc = <&pm6150_vadc>;
-	qcom,chg-term-src = <1>;
-	qcom,chg-term-current-ma = <(-200)>;
-	qcom,thermal-mitigation = <3000000
+	qcom,sec-charger-config = <3>;
+	qcom,thermal-mitigation = <4200000 3500000 3000000
 			2500000 2000000 1500000 1000000 500000>;
 	dpdm-supply = <&qusb_phy0>;
 	qcom,charger-temp-max = <800>;
@@ -433,15 +428,25 @@
 &dsi_ft8719_tianma_video {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-min-level = <15>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,platform-te-gpio = <&tlmm 90 0>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 };
+
 &dsi_nt36672a_shenchao_video {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-min-level = <15>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,platform-te-gpio = <&tlmm 90 0>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+};
+
+&dsi_nt36672a_tianma_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <15>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,platform-te-gpio = <&tlmm 90 0>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
@@ -474,16 +479,7 @@
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 };
 
-&thermal_zones {
-	quiet-therm-step {
-		status = "disabled";
-	};
-};
-
 &qusb_phy0 {
-	/delete-property/ qcom,qusb-phy-init-seq;
-	/delete-property/ reg;
-	/delete-property/ reg-names;
 	qcom,qusb-phy-init-seq = <0xf8 0x80
 					0x33 0x84
 					0x83 0x88
