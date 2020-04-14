@@ -1,5 +1,6 @@
-- Merged 4.14.171
-- Merged security patches (Android February 2020)
-- Merged f2fs-stable upstream
-- Updated SLMK
-- Some additional mutex/semaphone/qspinlock updates
+- Merged 4.14.176
+- Merged security patches (Android April 2020)
+- Merged LA.UM.8.1.r1-14700-sm8150.0 tag
+- HentaiOS users (and probably other DyneOEM Roms users) may encounter issues turning on Wi-Fi, workaround is to run "echo ON > /dev/wlan" with root privileges, FKM does that just fine
+- A LOT of other changes since last stable release
+- Still better BB than stock kernel ;-)
